@@ -1,0 +1,50 @@
+:root {
+  --bg-color: #f9f6ff;
+  --text-color: #351c53;
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --header-height: 70px;
+  --top-spacing: 150px;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  font-family: var(--font-family);
+}
+
+.app-container {
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-color);
+  padding-top: var(--top-spacing);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.mensaje-icono {
+  display: block;
+  margin: 150px auto 20px auto;
+  max-width: 150px;
+}
+
+.main-title {
+  color: var(--text-color);
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 auto;
+  padding-top: 0.5rem;
+}
+
+/* Para modo oscuro */
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background-color: var(--bg-color);
+  }
+}

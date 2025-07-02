@@ -1,0 +1,82 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(
+    0deg,
+    rgba(105, 67, 169, 0.3) 0%,  /* color abajo, más transparente */
+    rgba(53, 28, 83, 1) 100%     /* color arriba, más opaco */
+  );
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2rem;
+  box-sizing: border-box;
+  z-index: 1000;
+}
+
+.logo-espe {
+  height: 50px;
+}
+
+.header-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.header-center {
+  flex: 2;
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem; /* espacio entre botones */
+}
+
+.header-btn {
+  background-color: #6943a9; /* color base igual al botón logout */
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1.4rem;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1rem;
+  white-space: nowrap;
+  box-shadow: 0 3px 6px rgba(105, 67, 169, 0.5);
+  transition: background-color 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.header-btn:hover {
+  background-color: #512b87;
+  border: 2px solid #3b82f6; /* contorno azul bonito */
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.6);
+}
+
+.header-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.logout-button {
+  background-color: #6943a9;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1rem;
+  white-space: nowrap;
+  box-shadow: 0 3px 6px rgba(105, 67, 169, 0.5);
+  transition: background-color 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #512b87;
+  border: 2px solid #3b82f6; /* contorno azul bonito */
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.6);
+}
