@@ -7,7 +7,6 @@ function Header({ user, onLogout }) {
   const navigate = useNavigate();
   const [role, setRole] = useState("user");
 
-  // Actualiza el rol cada vez que el usuario cambia
   useEffect(() => {
     if (user?.role) {
       setRole(user.role);
@@ -16,12 +15,11 @@ function Header({ user, onLogout }) {
     }
   }, [user]);
 
-  // Maneja el cierre de sesión
   const handleLogout = () => {
     if (onLogout) {
-      onLogout(); // Limpia la sesión desde App.jsx
+      onLogout();
     }
-    navigate("/login"); // Redirige al login
+    navigate("/login");
   };
 
   return (
@@ -35,16 +33,23 @@ function Header({ user, onLogout }) {
           Analyze Cyber Grooming and Cyber Sexting
         </button>
 
-        {role === "admin" && (
-          <>
-            <button className="header-btn" onClick={() => navigate('/historial')}>
-              History
-            </button>
-            <button className="header-btn" onClick={() => navigate('/users')}>
-              User Management
-            </button>
-          </>
-        )}
+      {role === "admin" && (
+        <>
+          <button className="header-btn" onClick={() => navigate('/historial')}>
+            History
+          </button>
+          <button className="header-btn" onClick={() => navigate('/users')}>
+            User Management
+          </button>
+          <button className="header-btn" onClick={() => navigate('/auditoria')}>
+            Audit Log
+          </button>
+          <button className="header-btn" onClick={() => navigate('/dashboard')}>
+            Reports & Dashboard
+          </button>
+        </>
+      )}
+
       </div>
 
       <div className="header-right">

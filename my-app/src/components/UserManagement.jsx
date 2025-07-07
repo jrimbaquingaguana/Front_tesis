@@ -22,38 +22,63 @@ function UserManagement() {
     fetchUsers();
   }, []);
 
-  // Show modal for create or edit
+  // Show modal for create or edit with confirmation on edit
   const showUserForm = (user = null) => {
-    MySwal.fire({
-      title: user ? `Edit User: ${user.username}` : "Create New User",
-      html: (
-        <UserForm initialData={user} onSave={handleSave} />
-      ),
-      showConfirmButton: false,
-      showCloseButton: true,
-      didOpen: () => {
-        // No action needed here, UserForm controls own state
-      },
-      allowOutsideClick: false,
-    });
+    if (user) {
+      // Confirm before opening edit form
+      MySwal.fire({
+        title: `Are you sure you want to edit user: ${user.username}?`,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Yes, edit",
+        cancelButtonText: "Cancel",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          MySwal.fire({
+            title: `Edit User: ${user.username}`,
+            html: <UserForm initialData={user} onSave={handleSave} />,
+            showConfirmButton: false,
+            showCloseButton: true,
+            allowOutsideClick: false,
+          });
+        }
+      });
+    } else {
+      // Directly open form to create new user
+      MySwal.fire({
+        title: "Create New User",
+        html: <UserForm initialData={null} onSave={handleSave} />,
+        showConfirmButton: false,
+        showCloseButton: true,
+        allowOutsideClick: false,
+      });
+    }
   };
 
   // Save user (create or update)
   const handleSave = async (formData, closeModal) => {
     try {
+      // Obtener usuario logueado desde localStorage
+      const currentUserRaw = localStorage.getItem("currentUser");
+      const loggedInUser = currentUserRaw ? JSON.parse(currentUserRaw).username : "unknown";
+
       if (formData.isEditing) {
-        // Update existing user
         const updateData = { ...formData };
         delete updateData.isEditing;
         if (!updateData.password) delete updateData.password;
 
         await axios.put(
           `http://localhost:5000/usuarios/${formData.username}`,
-          updateData
+          updateData,
+          {
+            headers: {
+              usuario: loggedInUser,
+            },
+          }
         );
-        MySwal.fire("Success", "User updated successfully", "success");
+
+        await MySwal.fire("Success", "User updated successfully", "success");
       } else {
-        // Create new user (password required)
         if (!formData.password) {
           MySwal.fire("Error", "Password is required for new users", "error");
           return;
@@ -62,7 +87,8 @@ function UserManagement() {
         delete createData.isEditing;
 
         await axios.post("http://localhost:5000/usuarios", createData);
-        MySwal.fire("Success", "User created successfully", "success");
+
+        await MySwal.fire("Success", "User created successfully", "success");
       }
       closeModal();
       fetchUsers();
@@ -90,7 +116,15 @@ function UserManagement() {
     if (!result.isConfirmed) return;
 
     try {
-      await axios.delete(`http://localhost:5000/usuarios/${username}`);
+      // Obtener usuario logueado desde localStorage
+      const currentUserRaw = localStorage.getItem("currentUser");
+      const loggedInUser = currentUserRaw ? JSON.parse(currentUserRaw).username : "unknown";
+
+      await axios.delete(`http://localhost:5000/usuarios/${username}`, {
+        headers: {
+          usuario: loggedInUser,
+        },
+      });
       MySwal.fire("Deleted!", "User has been deleted.", "success");
       fetchUsers();
     } catch (error) {
@@ -105,15 +139,15 @@ function UserManagement() {
       <button
         onClick={() => showUserForm(null)}
         style={{
-          backgroundColor: "#6943a9", // morado
+          backgroundColor: "#6943a9",
           color: "white",
           padding: "0.5rem 1rem",
           border: "none",
-          borderRadius: 0, // sin bordes redondeados
+          borderRadius: 0,
           cursor: "pointer",
           marginBottom: "1rem",
           fontWeight: "bold",
-          boxShadow: "0 3px 8px rgba(105, 67, 169, 0.6)", // sombra morada
+          boxShadow: "0 3px 8px rgba(105, 67, 169, 0.6)",
           fontSize: "1rem",
         }}
       >
@@ -253,11 +287,11 @@ function UserForm({ initialData, onSave }) {
         <button
           onClick={() => onSave(formData, () => MySwal.close())}
           style={{
-            backgroundColor: "#6943a9", // morado
+            backgroundColor: "#6943a9",
             color: "white",
             padding: "0.4rem 1rem",
             border: "none",
-            borderRadius: 0, // sin bordes redondeados
+            borderRadius: 0,
             cursor: "pointer",
             fontWeight: "bold",
             marginRight: "0.5rem",
@@ -271,7 +305,7 @@ function UserForm({ initialData, onSave }) {
             backgroundColor: "#ccc",
             padding: "0.4rem 1rem",
             border: "none",
-            borderRadius: 0, // sin bordes redondeados
+            borderRadius: 0,
             cursor: "pointer",
           }}
         >
@@ -291,10 +325,10 @@ const cellStyle = {
 const actionButtonStyle = {
   marginRight: "5px",
   padding: "0.3rem 0.6rem",
-  backgroundColor: "#6943a9", // morado
+  backgroundColor: "#6943a9",
   color: "white",
   border: "none",
-  borderRadius: 0, // sin bordes redondeados
+  borderRadius: 0,
   cursor: "pointer",
   fontWeight: "bold",
 };
@@ -309,7 +343,7 @@ const labelStyle = {
 const inputStyle = {
   width: "100%",
   padding: "0.5rem",
-  borderRadius: 0, // sin bordes redondeados
+  borderRadius: 0,
   border: "1px solid #ccc",
   fontSize: "1rem",
   boxSizing: "border-box",

@@ -3,7 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Analisis from "./components/Analisis";
 import Historial from "./components/Historial";
 import Header from "./components/Header";
-import UserManagement from "./components/UserManagement"; // corregido aquí
+import UserManagement from "./components/UserManagement";
+import Auditoria from "./components/Auditoria";  // <-- Importar Auditoria aquí
+import Dashboard from "./components/Dashboard";  // <-- Importar Auditoria aquí
+
 
 const API_BASE = "http://localhost:5000"; // Cambia según tu backend
 
@@ -11,14 +14,42 @@ function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutExpires, setLockoutExpires] = useState(null);
+
+  // Función para validar inputs y prevenir ataques básicos (XSS, SQLi)
+  const isInputSafe = (input) => {
+    const forbiddenPatterns = [
+      /<script.*?>.*?<\/script>/gi,
+      /['"\\;]/,
+      /\b(select|insert|delete|update|drop|union|or|and)\b/gi,
+      /--/,
+    ];
+    return !forbiddenPatterns.some((pattern) => pattern.test(input));
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+
     if (!username || !password) {
       setError("All fields are required");
       return;
     }
+
+    if (!isInputSafe(username) || !isInputSafe(password)) {
+      setError("Input contains invalid or unsafe characters.");
+      return;
+    }
+
+    const now = new Date();
+
+    if (lockoutExpires && now < lockoutExpires) {
+      const waitTime = Math.ceil((lockoutExpires - now) / 60000);
+      setError(`Too many failed attempts. Please try again in ${waitTime} minute(s).`);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/usuarios/login`, {
         method: "POST",
@@ -26,10 +57,24 @@ function Login({ onLogin }) {
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
+
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        const newFailedAttempts = failedAttempts + 1;
+        setFailedAttempts(newFailedAttempts);
+
+        if (newFailedAttempts >= 3) {
+          const lockoutTime = new Date(now.getTime() + 15 * 60 * 1000); // +15 minutes
+          setLockoutExpires(lockoutTime);
+          setError("Too many failed attempts. Please try again in 15 minutes.");
+        } else {
+          setError(data.error || "Login failed");
+        }
         return;
       }
+
+      // Login exitoso: resetear contador y bloqueo
+      setFailedAttempts(0);
+      setLockoutExpires(null);
       onLogin(data.user);
     } catch {
       setError("Error connecting to server");
@@ -46,6 +91,7 @@ function Login({ onLogin }) {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           style={inputStyle}
+          autoComplete="username"
         />
         <input
           type="password"
@@ -53,8 +99,11 @@ function Login({ onLogin }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={inputStyle}
+          autoComplete="current-password"
         />
-        <button type="submit" style={buttonStyle}>Login</button>
+        <button type="submit" style={buttonStyle}>
+          Login
+        </button>
       </form>
       <p style={{ marginTop: "1rem" }}>
         Don't have an account? <a href="/register">Register here</a>
@@ -163,10 +212,10 @@ function AdminRoute({ user, children }) {
 }
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const savedUser = JSON.parse(localStorage.getItem("currentUser"));
     if (savedUser) {
       setUser(savedUser);
@@ -222,6 +271,22 @@ function App() {
             </AdminRoute>
           }
         />
+        <Route
+          path="/auditoria"
+          element={
+            <AdminRoute user={user}>
+              <Auditoria />
+            </AdminRoute>
+          }
+        />
+      <Route
+        path="/dashboard"
+        element={
+          <AdminRoute user={user}>
+            <Dashboard />
+          </AdminRoute>
+        }
+      />
         <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
       </Routes>
     </Router>
