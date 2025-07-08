@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import autoTable from "jspdf-autotable";
 
 const MySwal = withReactContent(Swal);
 
@@ -35,7 +35,8 @@ function History() {
     XLSX.writeFile(wb, "analyzed_messages_history.xlsx");
   };
 
-  const exportByDateRange = async () => {
+  // Export Excel filtered by date range
+  const exportByDateRangeExcel = async () => {
     const { value: formValues } = await MySwal.fire({
       title: "Select date range",
       html:
@@ -76,6 +77,86 @@ function History() {
     XLSX.utils.book_append_sheet(wb, ws, "FilteredHistory");
     XLSX.writeFile(wb, `filtered_history_${from}_to_${to}.xlsx`);
   };
+
+  // Export PDF filtered by date range usando jsPDF-AutoTable (corregido para Vite/React)
+  const exportByDateRangePDF = async () => {
+    const { value: formValues } = await MySwal.fire({
+      title: "Select date range",
+      html:
+        `<label>From: </label><input type="date" id="startDatePDF" class="swal2-input" required>` +
+        `<label>To: </label><input type="date" id="endDatePDF" class="swal2-input" required>`,
+      focusConfirm: false,
+      preConfirm: () => {
+        const from = document.getElementById("startDatePDF").value;
+        const to = document.getElementById("endDatePDF").value;
+        if (!from || !to) {
+          Swal.showValidationMessage("You must fill in both dates.");
+          return;
+        }
+        return [from, to];
+      },
+    });
+
+    if (!formValues) return;
+
+    const [from, to] = formValues;
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    toDate.setHours(23, 59, 59);
+
+    const filtered = history.filter((item) => {
+      const date = new Date(item.fecha || item.fecha_creacion);
+      return date >= fromDate && date <= toDate;
+    });
+
+    if (filtered.length === 0) {
+      MySwal.fire("No results", "There are no records in the selected date range.", "info");
+      return;
+    }
+
+    const doc = new jsPDF("p", "pt", "a4");
+    const margin = 40;
+    const titleY = 40;
+
+    doc.setFontSize(22);
+    doc.setTextColor("#351c53");
+    doc.text("Filtered Analyzed Messages History", doc.internal.pageSize.getWidth() / 2, titleY, {
+      align: "center",
+    });
+
+    doc.setFontSize(12);
+    doc.setTextColor("#444");
+    doc.text(`Date range: ${from} to ${to}`, margin, titleY + 25);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, titleY + 40);
+
+    // Construir datos para la tabla
+    const tableColumn = ["Original Message", "Classification", "Date"];
+    const tableRows = filtered.map((item) => [
+      item.texto_original || "",
+      item.clasificacion || "",
+      item.fecha
+        ? new Date(item.fecha).toLocaleString()
+        : item.fecha_creacion
+        ? new Date(item.fecha_creacion).toLocaleString()
+        : "N/A",
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: titleY + 60,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 10, cellPadding: 4 },
+      headStyles: { fillColor: [53, 28, 83], textColor: 255 },
+      alternateRowStyles: { fillColor: [249, 249, 249] },
+      tableLineColor: [221, 221, 221],
+      tableLineWidth: 0.5,
+    });
+
+    doc.save(`filtered_history_${from}_to_${to}.pdf`);
+  };
+
+  // The rest of your editing and deleting code stays the same...
 
   const startEdit = (record) => {
     setEditingId(record.id);
@@ -155,60 +236,49 @@ function History() {
     }
   };
 
-  // Nueva función para exportar PDF sin la columna "Actions"
+  // Exportar todo el historial a PDF usando jsPDF-AutoTable (corregido para Vite/React)
   const exportToPDF = async () => {
-    if (!tableRef.current) return;
+    if (!history.length) return;
 
-    // Clonamos la tabla
-    const tableClone = tableRef.current.cloneNode(true);
-
-    // Eliminamos la columna "Actions" (última columna) en encabezado y filas
-    const headers = tableClone.querySelectorAll("thead th");
-    if (headers.length > 0) headers[headers.length - 1].remove();
-
-    const rows = tableClone.querySelectorAll("tbody tr");
-    rows.forEach((row) => {
-      const cells = row.querySelectorAll("td");
-      if (cells.length > 0) cells[cells.length - 1].remove();
-    });
-
-    // Contenedor oculto para la captura
-    const hiddenDiv = document.createElement("div");
-    hiddenDiv.style.position = "fixed";
-    hiddenDiv.style.left = "-9999px";
-    hiddenDiv.style.top = "0";
-    hiddenDiv.style.backgroundColor = "white";
-    hiddenDiv.appendChild(tableClone);
-    document.body.appendChild(hiddenDiv);
-
-    // Capturamos el clon con html2canvas
-    const canvas = await html2canvas(hiddenDiv, { scale: 2 });
-
-    // Eliminamos el contenedor oculto
-    document.body.removeChild(hiddenDiv);
-
-    const pdf = new jsPDF("p", "pt", "a4");
+    const doc = new jsPDF("p", "pt", "a4");
     const margin = 40;
     const titleY = 40;
 
-    pdf.setFontSize(22);
-    pdf.setTextColor("#351c53");
-    pdf.text("Analyzed Messages History", pdf.internal.pageSize.getWidth() / 2, titleY, {
+    doc.setFontSize(22);
+    doc.setTextColor("#351c53");
+    doc.text("Analyzed Messages History", doc.internal.pageSize.getWidth() / 2, titleY, {
       align: "center",
     });
 
-    pdf.setFontSize(12);
-    pdf.setTextColor("#444");
-    pdf.text(`Generated on: ${new Date().toLocaleString()}`, margin, titleY + 25);
+    doc.setFontSize(12);
+    doc.setTextColor("#444");
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, titleY + 25);
 
-    const imgData = canvas.toDataURL("image/png");
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    // Construir datos para la tabla
+    const tableColumn = ["Original Message", "Classification", "Date"];
+    const tableRows = history.map((item) => [
+      item.texto_original || "",
+      item.clasificacion || "",
+      item.fecha
+        ? new Date(item.fecha).toLocaleString()
+        : item.fecha_creacion
+        ? new Date(item.fecha_creacion).toLocaleString()
+        : "N/A",
+    ]);
 
-    pdf.addImage(imgData, "PNG", margin, titleY + 40, pdfWidth, pdfHeight);
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: titleY + 40,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 10, cellPadding: 4 },
+      headStyles: { fillColor: [53, 28, 83], textColor: 255 },
+      alternateRowStyles: { fillColor: [249, 249, 249] },
+      tableLineColor: [221, 221, 221],
+      tableLineWidth: 0.5,
+    });
 
-    pdf.save(`history_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`history_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   return (
@@ -220,15 +290,19 @@ function History() {
         <>
           <div style={{ marginBottom: "1rem" }}>
             <button onClick={exportToExcel} style={buttonStyle("#6943a9")}>
-              Download Excel
+              Download All Excel
             </button>
 
-            <button onClick={exportByDateRange} style={buttonStyle("#351c53", "1rem")}>
-              Export by Date Range
+            <button onClick={exportByDateRangeExcel} style={buttonStyle("#351c53", "1rem")}>
+              Export by Date Range (Excel)
             </button>
 
-            <button onClick={exportToPDF} style={buttonStyle("#512b87", "1rem")}>
-              📄 Download PDF
+            <button onClick={exportByDateRangePDF} style={buttonStyle("#512b87", "1rem")}>
+              Export by Date Range (PDF)
+            </button>
+
+            <button onClick={exportToPDF} style={buttonStyle("#421d6f", "1rem")}>
+              📄 Download All PDF
             </button>
           </div>
 
